@@ -14,14 +14,31 @@ contract MinimalAccount is IAccount, Ownable {
                                  Errors
     //////////////////////////////////////////////////////////////*/
 
+    error MinimalAccount__CallFailed(bytes);
     error MinimalAccount__NotFromEntryPoint();
+    error MinimalAccount__NotFromEntryPointOrOwner();
+
+    /*//////////////////////////////////////////////////////////////
+                            State Variables
+    //////////////////////////////////////////////////////////////*/
 
     // address private immutable i_entryPoint;
     IEntryPoint private immutable i_entryPoint;
 
+    /*//////////////////////////////////////////////////////////////
+                               Modifiers
+    //////////////////////////////////////////////////////////////*/
+
     modifier requireFromEntryPoiunt() {
         if (msg.sender != address(i_entryPoint)) {
             revert MinimalAccount__NotFromEntryPoint();
+        }
+        _;
+    }
+
+    modifier requireFromEntryPointOrOwner() {
+        if (msg.sender != address(i_entryPoint) && msg.sender != owner()) {
+            revert MinimalAccount__NotFromEntryPointOrOwner();
         }
         _;
     }
@@ -33,6 +50,31 @@ contract MinimalAccount is IAccount, Ownable {
     constructor(address entryPoint) Ownable(msg.sender) {
         // i_entryPoint = entryPoint
         i_entryPoint = IEntryPoint(entryPoint);
+    }
+
+    receive() external payable {}
+
+    /*//////////////////////////////////////////////////////////////
+                           External Functions
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Executes a transaction from this account to a specified destination.
+     * @param destination The address to send the transaction to.
+     * @param value The amount of Ether to send.
+     * @param functionData The data to pass along with the call.
+     * @notice Can be called by either the EntryPoint contract or the contract owner.
+     * @dev Reverts with `MinimalAccount__CallFailed` if the call fails.
+     */
+    function execute(address destination, uint256 value, bytes calldata functionData)
+        external
+        payable
+        requireFromEntryPointOrOwner
+    {
+        (bool success, bytes memory result) = destination.call{value: value}(functionData);
+        if (!success) {
+            revert MinimalAccount__CallFailed(result);
+        }
     }
 
     // Signature is valid if it is the MinimalAccount contract owner,  can go wild
@@ -47,6 +89,10 @@ contract MinimalAccount is IAccount, Ownable {
         // nonce uniquiness is managed by the entryPoint itself
         _payPrefund(missingAccountFunds); // or use payMaster
     }
+
+    /*//////////////////////////////////////////////////////////////
+                           Internal Functions
+    //////////////////////////////////////////////////////////////*/
 
     // EIP-191 version of signed hash
     // can customize to anything: make sure faceId approved it, or google session key is correct, etc
