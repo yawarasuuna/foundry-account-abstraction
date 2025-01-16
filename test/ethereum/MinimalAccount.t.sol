@@ -18,6 +18,7 @@ contract MinimalAccountTest is Test {
     MinimalAccount minimalAccount;
     ERC20Mock usdc;
     SendPackedUserOp sendPackedUserOp;
+    address entryPoint;
 
     uint256 constant AMOUNT = 1e18;
 
@@ -27,7 +28,8 @@ contract MinimalAccountTest is Test {
         deployMinimal = new DeployMinimal();
         (helperConfig, minimalAccount) = deployMinimal.deployMinimalAccount();
         usdc = new ERC20Mock();
-        sendPackedUserOp = new SendPackedUserOp(); 
+        sendPackedUserOp = new SendPackedUserOp();
+        entryPoint = helperConfig.getConfig().entryPoint;
     }
 
     function testOwnerCanExecuteCommands() public {
@@ -65,12 +67,32 @@ contract MinimalAccountTest is Test {
             abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
         PackedUserOperation memory packedUserOp =
             sendPackedUserOp.generateSignedUserOperation(executeCallData, helperConfig.getConfig());
-        bytes32 userOperationHash = IEntryPoint(helperConfig.getConfig().entryPoint).getUserOpHash(packedUserOp);
+        bytes32 userOperationHash = IEntryPoint(entryPoint).getUserOpHash(packedUserOp);
 
         address actualSigner = ECDSA.recover(userOperationHash.toEthSignedMessageHash(), packedUserOp.signature);
 
         assertEq(actualSigner, minimalAccount.owner());
     }
 
-    function testValidationOfUserOps() public {}
+    function testValidationOfUserOps() public {
+        assertEq(usdc.balanceOf(address(minimalAccount)), 0);
+        address dest = address(usdc);
+        uint256 value = 0;
+        bytes memory functionCall = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
+        bytes memory executeCallData =
+            abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionCall);
+        PackedUserOperation memory packedUserOp =
+            sendPackedUserOp.generateSignedUserOperation(executeCallData, helperConfig.getConfig());
+        bytes32 userOperationHash = IEntryPoint(entryPoint).getUserOpHash(packedUserOp);
+        uint256 missingAccountFunds = 1e17;
+
+        vm.prank(entryPoint); // pretend to be entryPoint, because validateUserOp() requiresFromEntryPoint
+        uint256 validationData = minimalAccount.validateUserOp(packedUserOp, userOperationHash, missingAccountFunds);
+
+        assertEq(validationData, 0);
+    }
+
+    function testEntryPointCanExecuteCommands() public {}
 }
+
+
