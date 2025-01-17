@@ -13,18 +13,19 @@ contract SendPackedUserOp is Script {
 
     function run() public {}
 
-    function generateSignedUserOperation(bytes memory callData, HelperConfig.NetworkConfig memory config)
-        public
-        view
-        returns (PackedUserOperation memory)
-    {
-        uint256 nonce = vm.getNonce(config.account);
-        PackedUserOperation memory userOp = _generateUnsignedUserOperation(callData, config.account, nonce);
+    function generateSignedUserOperation(
+        bytes memory callData,
+        HelperConfig.NetworkConfig memory config,
+        address minimalAccount
+    ) public view returns (PackedUserOperation memory) {
+        uint192 key = 0;
+        uint256 nonce = IEntryPoint(config.entryPoint).getNonce(minimalAccount, key);
+        // uint256 nonce = vm.getNonce(minimalAccount);
+        PackedUserOperation memory userOp = _generateUnsignedUserOperation(callData, minimalAccount, nonce);
 
         bytes32 userOpHash = IEntryPoint(config.entryPoint).getUserOpHash(userOp);
         bytes32 digest = userOpHash.toEthSignedMessageHash();
 
-        // TO DO: refactor according to solution to foundry/issues/8225
         uint8 v;
         bytes32 r;
         bytes32 s;
@@ -32,11 +33,11 @@ contract SendPackedUserOp is Script {
         if (block.chainid == 31337) {
             (v, r, s) = vm.sign(ANVIL_DEFAULT_KEY, digest);
         } else {
-            (v, r, s) = vm.sign(config.account, digest);
+            (v, r, s) = vm.sign(minimalAccount, digest);
         }
 
         // // vm.sign(vm.envUnint(privateKey), digest); // never do this
-        // (uint8 v, bytes32 r, bytes32 s) = vm.sign(config.account, digest);
+        // (uint8 v, bytes32 r, bytes32 s) = vm.sign(minimalAccount, digest);
         userOp.signature = abi.encodePacked(r, s, v); // note the order
         return userOp;
     }
