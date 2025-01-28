@@ -14,6 +14,9 @@ contract HelperConfig is Script {
 
     uint256 constant ETH_MAINNET_CHAIN_ID = 1;
     uint256 constant ETH_SEPOLIA_CHAIN_ID = 11155111;
+    uint256 constant ARBITRUM_MAINNET_CHAIN_ID = 42161;
+    uint256 constant ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
+    uint256 constant ZKSYNC_MAINNET_CHAIN_ID = 324;
     uint256 constant ZKSYNC_SEPOLIA_CHAIN_ID = 300;
     uint256 constant LOCAL_CHAIN_ID = 31337;
     address constant BURNER_WALLET = 0xaE95d1cd4573c693364E7b52598dDd2C28dA3aFE;
@@ -25,6 +28,7 @@ contract HelperConfig is Script {
 
     constructor() {
         networkConfigs[ETH_SEPOLIA_CHAIN_ID] = getEthSepoliaEth();
+        networkConfigs[ARBITRUM_SEPOLIA_CHAIN_ID] = getArbitrumSepoliaEth();
         networkConfigs[ZKSYNC_SEPOLIA_CHAIN_ID] = getZkSyncSepoliaEth();
     }
 
@@ -43,7 +47,11 @@ contract HelperConfig is Script {
     }
 
     function getEthSepoliaEth() public pure returns (NetworkConfig memory) {
-        return NetworkConfig({entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789, account: BURNER_WALLET});
+        return NetworkConfig({entryPoint: 0x0000000071727De22E5E9d8BAf0edAc6f37da032, account: BURNER_WALLET});
+    }
+
+    function getArbitrumSepoliaEth() public pure returns (NetworkConfig memory) {
+        return NetworkConfig({entryPoint: 0x0000000071727De22E5E9d8BAf0edAc6f37da032, account: BURNER_WALLET});
     }
 
     function getZkSyncSepoliaEth() public pure returns (NetworkConfig memory) {
