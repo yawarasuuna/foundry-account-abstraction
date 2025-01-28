@@ -2,16 +2,38 @@
 pragma solidity ^0.8.25;
 
 import {Script} from "forge-std/Script.sol";
+
 import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
 import {HelperConfig} from "../script/HelperConfig.s.sol";
 import {MinimalAccount} from "../src/ethereum/MinimalAccount.sol";
 
 contract SendPackedUserOp is Script {
     using MessageHashUtils for bytes32;
 
-    function run() public {}
+    uint256 constant AMOUNT_TO_APPROVE = 1e18;
+
+    function run() public {
+        HelperConfig helperConfig = new HelperConfig();
+        // TODO Refactor as helperConfig.getConfig();
+        address dest = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d; // arbitrum sepolia  USDC address
+        uint256 value = 0;
+        bytes memory functionData = abi.encodeWithSelector(IERC20.approve.selector, 0x111, AMOUNT_TO_APPROVE);
+        bytes memory executeCallData =
+            abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
+        PackedUserOperation memory userOp =
+            generateSignedUserOperation(executeCallData, helperConfig.getConfig(), address(0x111));
+
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+
+        ops[0] = userOp;
+
+        vm.startBroadcast();
+        IEntryPoint(helperConfig.getConfig().entryPoint).handleOps(ops, payable(helperConfig.getConfig().account));
+    }
 
     function generateSignedUserOperation(
         bytes memory callData,
