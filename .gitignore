@@ -13,3 +13,12 @@ docs/
 
 # Dotenv file
 .env
+
+# others
+zkout/
+.notes.md
+debugger/
+.vscode
+.DS_Store
+.encryptedKey.json
+.devex_issues.md
