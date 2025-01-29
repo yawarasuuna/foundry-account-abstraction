@@ -1,24 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+// zkSync Era Imports
 import {
-    IAccount,
-    ACCOUNT_VALIDATION_SUCCESS_MAGIC
+    ACCOUNT_VALIDATION_SUCCESS_MAGIC,
+    IAccount
 } from "lib/foundry-era-contracts/src/system-contracts/contracts/interfaces/IAccount.sol";
-import {
-    MemoryTransactionHelper,
-    Transaction
-} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/MemoryTransactionHelper.sol";
-import {SystemContractsCaller} from
-    "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/SystemContractsCaller.sol";
 import {
     BOOTLOADER_FORMAL_ADDRESS,
     DEPLOYER_SYSTEM_CONTRACT,
     NONCE_HOLDER_SYSTEM_CONTRACT
 } from "lib/foundry-era-contracts/src/system-contracts/contracts/Constants.sol";
 import {INonceHolder} from "lib/foundry-era-contracts/src/system-contracts/contracts/interfaces/INonceHolder.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {
+    MemoryTransactionHelper,
+    Transaction
+} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/MemoryTransactionHelper.sol";
+import {SystemContractsCaller} from
+    "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/SystemContractsCaller.sol";
+import {Utils} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/Utils.sol";
+
+// OZ Imports
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ZkMinimalAccount is IAccount, Ownable {
@@ -28,8 +32,11 @@ contract ZkMinimalAccount is IAccount, Ownable {
                                  Errors
     //////////////////////////////////////////////////////////////*/
 
+    error ZkMinimalAccount__FailedExecution();
+    error ZkMinimalAccount__FailedToPay();
     error ZkMinimalAccount__NotEnoughBalance();
     error ZkMinimalAccount__NotFromBootLoader();
+    error ZkMinimalAccount__NotFromBootLoaderNorOwner();
 
     /*//////////////////////////////////////////////////////////////
                                Modifiers
@@ -42,7 +49,16 @@ contract ZkMinimalAccount is IAccount, Ownable {
         _;
     }
 
+    modifier requireFromBootLoaderOrOwner() {
+        if (msg.sender != BOOTLOADER_FORMAL_ADDRESS && msg.sender != owner()) {
+            revert ZkMinimalAccount__NotFromBootLoaderNorOwner();
+        }
+        _;
+    }
+
     constructor() Ownable(msg.sender) {}
+
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                            External Functions
@@ -53,6 +69,43 @@ contract ZkMinimalAccount is IAccount, Ownable {
         bytes32, /* _suggestedSignedHash */
         Transaction memory _transaction
     ) external payable requireFromBootloader returns (bytes4 magic) {
+        return _validateTransaction(_transaction);
+    }
+
+    function executeTransaction(
+        bytes32, /* _txHash */
+        bytes32, /* _suggestedSignedHash */
+        Transaction memory _transaction
+    ) external payable requireFromBootLoaderOrOwner {
+        _executeTransaction(_transaction);
+    }
+
+    function executeTransactionFromOutside(Transaction memory _transaction) external payable {
+        _validateTransaction(_transaction);
+        _executeTransaction(_transaction);
+    }
+
+    function payForTransaction(
+        bytes32, /* _txHash */
+        bytes32, /* _suggestedSignedHash */
+        Transaction memory _transaction
+    ) external payable {
+        bool success = _transaction.payToTheBootloader();
+        if (!success) {
+            revert ZkMinimalAccount__FailedToPay();
+        }
+    }
+
+    function prepareForPaymaster(bytes32 _txHash, bytes32 _possibleSignedHash, Transaction memory _transaction)
+        external
+        payable
+    {}
+
+    /*//////////////////////////////////////////////////////////////
+                           Internal Functions
+    //////////////////////////////////////////////////////////////*/
+
+    function _validateTransaction(Transaction memory _transaction) internal returns (bytes4 magic) {
         uint256 totalRequiredBalance = _transaction.totalRequiredBalance();
         if (totalRequiredBalance > address(this).balance) {
             revert ZkMinimalAccount__NotEnoughBalance();
@@ -78,24 +131,22 @@ contract ZkMinimalAccount is IAccount, Ownable {
         return magic;
     }
 
-    function executeTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, Transaction memory _transaction)
-        external
-        payable
-    {}
+    function _executeTransaction(Transaction memory _transaction) internal {
+        address to = address(uint160(_transaction.to)); // converts uint256 to uin160 to address;
+        uint128 value = Utils.safeCastToU128(_transaction.value); // value might have to be used as a system  contracts call , so convertion required
+        bytes memory data = _transaction.data;
 
-    function executeTransactionFromOutside(Transaction memory _transaction) external payable {}
-
-    function payForTransaction(bytes32 _txHash, bytes32 _suggestedSignedHash, Transaction memory _transaction)
-        external
-        payable
-    {}
-
-    function prepareForPaymaster(bytes32 _txHash, bytes32 _possibleSignedHash, Transaction memory _transaction)
-        external
-        payable
-    {}
-
-    /*//////////////////////////////////////////////////////////////
-                           Internal Functions
-    //////////////////////////////////////////////////////////////*/
+        if (to == address(DEPLOYER_SYSTEM_CONTRACT)) {
+            uint32 gas = Utils.safeCastToU32(gasleft());
+            SystemContractsCaller.systemCallWithPropagatedRevert(gas, to, value, data);
+        } else {
+            bool success;
+            assembly {
+                success := call(gas(), to, value, add(data, 0x20), mload(data), 0, 0)
+            }
+            if (!success) {
+                revert ZkMinimalAccount__FailedExecution();
+            }
+        }
+    }
 }
