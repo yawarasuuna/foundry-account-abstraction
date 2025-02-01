@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+/**
+ * @title MinimalAccount
+ * @dev A minimal account abstraction contract that implements the IAccount interface.
+ * @notice This contract allows users to execute transactions, validate user operations, and manage funds.
+ * It supports validation of signatures and payment of transaction fees through the EntryPoint contract.
+ */
+
+// External Library Imports
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+// Account Abstraction Imports
 import {IAccount} from "lib/account-abstraction/contracts/interfaces/IAccount.sol";
 import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstraction/contracts/core/Helpers.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MinimalAccount is IAccount, Ownable {
     /*//////////////////////////////////////////////////////////////
@@ -47,11 +57,18 @@ contract MinimalAccount is IAccount, Ownable {
                                Functions
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev Initializes the contract with the EntryPoint address.
+     * @param entryPoint The address of the EntryPoint contract.
+     */
     constructor(address entryPoint) Ownable(msg.sender) {
         // i_entryPoint = entryPoint
         i_entryPoint = IEntryPoint(entryPoint);
     }
 
+    /**
+     * @dev Allows the contract to receive Ether.
+     */
     receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
@@ -77,7 +94,16 @@ contract MinimalAccount is IAccount, Ownable {
         }
     }
 
-    // Signature is valid if it is the MinimalAccount contract owner,  can go wild
+    /**
+     * @dev Validates a user operation and pays the required prefund.
+     * @param userOp The packed user operation data.
+     * @param userOpHash The hash of the user operation.
+     * @param missingAccountFunds The amount of funds required to cover the operation.
+     * @return validationData The result of the validation (success or failure).
+     * @notice Can only be called by the EntryPoint contract.
+     * @dev Calls `_validateSignature` to verify the signature and `_payPrefund` to cover the operation cost.
+     */
+    // Signature is valid if it is the MinimalAccount contract owner,  otherwise can go wild
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
         requireFromEntryPoiunt
@@ -94,6 +120,13 @@ contract MinimalAccount is IAccount, Ownable {
                            Internal Functions
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev Validates the signature of a user operation.
+     * @param userOp The packed user operation data.
+     * @param userOpHash The hash of the user operation.
+     * @return validationData The result of the validation (success or failure).
+     * @dev Uses ECDSA to recover the signer and checks if it matches the contract owner.
+     */
     // EIP-191 version of signed hash
     // can customize to anything: make sure faceId approved it, or google session key is correct, etc
     // signature is aggregator?
@@ -110,6 +143,11 @@ contract MinimalAccount is IAccount, Ownable {
         return SIG_VALIDATION_SUCCESS;
     }
 
+    /**
+     * @dev Pays the required prefund to the EntryPoint contract.
+     * @param missingAccountFunds The amount of funds required to cover the operation.
+     * @dev Sends the funds to the EntryPoint contract if `missingAccountFunds` is non-zero.
+     */
     function _payPrefund(uint256 missingAccountFunds) internal {
         if (missingAccountFunds != 0) {
             // hardcode msg.sender as entryPoint contract, its the entryPoint contract's job to verify payment is good
@@ -122,7 +160,43 @@ contract MinimalAccount is IAccount, Ownable {
                                 Getters
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev Returns the address of the EntryPoint contract.
+     * @return The address of the EntryPoint contract.
+     */
     function getEntryPoint() internal view returns (address) {
         return address(i_entryPoint);
+    }
+
+    /**
+     * @dev Returns the Ether balance of this contract.
+     * @return The balance of the contract in wei.
+     */
+    function getContractBalance() internal view returns (uint256) {
+        return address(this).balance;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     * @return The address of the owner.
+     */
+    function getOwner() internal view returns (address) {
+        return owner();
+    }
+
+    /**
+     * @dev Returns the validation success constant.
+     * @return The value representing validation success.
+     */
+    function getValidationSuccess() internal pure returns (uint256) {
+        return SIG_VALIDATION_SUCCESS;
+    }
+
+    /**
+     * @dev Returns the validation failure constant.
+     * @return The value representing validation failure.
+     */
+    function getValidationFailed() internal pure returns (uint256) {
+        return SIG_VALIDATION_FAILED;
     }
 }
