@@ -13,6 +13,8 @@ import {
     Transaction
 } from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/MemoryTransactionHelper.sol";
 
+/// @title zkMinimalAccountTest
+/// @notice Tests for the ZkMinimalAccount contract on zkSync.
 contract zkMinimalAccountTest is Test {
     using MessageHashUtils for bytes32;
 
@@ -24,6 +26,7 @@ contract zkMinimalAccountTest is Test {
     address constant ANVIL_DEFAULT_ACCOUNT = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address public NOT_OWNER = makeAddr("notOwner");
 
+    /// @notice Sets up the test environment.
     function setUp() public {
         zkMinAcc = new ZkMinimalAccount();
         zkMinAcc.transferOwnership(ANVIL_DEFAULT_ACCOUNT);
@@ -31,6 +34,7 @@ contract zkMinimalAccountTest is Test {
         vm.deal(address(zkMinAcc), AMOUNT);
     }
 
+    /// @notice Tests that the owner can execute commands.
     function testZkOwnerCanExecuteCommands() public {
         address dest = address(usdc);
         uint256 value = 0;
@@ -44,6 +48,7 @@ contract zkMinimalAccountTest is Test {
         assertEq(usdc.balanceOf(address(zkMinAcc)), AMOUNT);
     }
 
+    /// @notice Tests that a non-owner cannot execute commands.
     function test_RevertIf_NotOwnerCannotExecuteCommands() public {
         address dest = address(zkMinAcc);
         uint256 value = 0;
@@ -58,6 +63,7 @@ contract zkMinimalAccountTest is Test {
         assertEq(usdc.balanceOf(address(zkMinAcc)), 0);
     }
 
+    /// @notice Tests the validation of transactions.
     function testZkValidateTransaction() public {
         address dest = address(zkMinAcc);
         uint256 value = 0;
@@ -76,6 +82,7 @@ contract zkMinimalAccountTest is Test {
         assertEq(magic, ACCOUNT_VALIDATION_SUCCESS_MAGIC);
     }
 
+    /// @notice Tests that transaction validation fails if the caller is not the bootloader.
     function test_RevertIf_ZkValidateTransactionIsNotFromBootloader() public {
         address dest = address(zkMinAcc);
         uint256 value = 0;
@@ -101,9 +108,8 @@ contract zkMinimalAccountTest is Test {
                                 Helpers
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @dev scripting currently broken, testing only on local chain for now
-     */
+    /// @dev scripting currently broken, testing only on local chain for now
+    /// @notice Signs a transaction with the default Anvil key.
     function _signedTransaction(Transaction memory transaction /* address account */ )
         internal
         view
@@ -125,6 +131,7 @@ contract zkMinimalAccountTest is Test {
         return signedTransaction;
     }
 
+    /// @notice Creates an unsigned transaction.
     function _createUnsignedTransaction(
         address from,
         uint8 transactionType,

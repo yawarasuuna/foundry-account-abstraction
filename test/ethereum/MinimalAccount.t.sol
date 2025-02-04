@@ -10,6 +10,8 @@ import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {IEntryPoint, PackedUserOperation, SendPackedUserOp} from "../../script/SendPackedUserOp.s.sol";
 import {MinimalAccount} from "../../src/ethereum/MinimalAccount.sol";
 
+/// @title MinimalAccountTest
+/// @notice This contract contains tests for the MinimalAccount contract.
 contract MinimalAccountTest is Test {
     using MessageHashUtils for bytes32;
 
@@ -20,10 +22,13 @@ contract MinimalAccountTest is Test {
     SendPackedUserOp sendPackedUserOp;
     address entryPoint;
 
+    /// @notice The amount of tokens to mint or transfer in tests.
     uint256 constant AMOUNT = 1e18;
 
+    /// @notice A random user address for testing permissions.
     address randomUser = makeAddr("randomUser");
 
+    /// @dev Deploys the MinimalAccount contract, mocks, and helper contracts.
     function setUp() public {
         deployMinimal = new DeployMinimal();
         (helperConfig, minimalAccount) = deployMinimal.deployMinimalAccount();
@@ -32,6 +37,7 @@ contract MinimalAccountTest is Test {
         entryPoint = helperConfig.getConfig().entryPoint;
     }
 
+    /// @dev Verifies that the owner can call the `execute` function to mint tokens to the MinimalAccount.
     function testOwnerCanExecuteCommands() public {
         assertEq(usdc.balanceOf(address(minimalAccount)), 0);
         address dest = address(usdc);
@@ -45,6 +51,7 @@ contract MinimalAccountTest is Test {
         assertEq(usdc.balanceOf(address(minimalAccount)), AMOUNT);
     }
 
+    /// @dev Verifies that a random user cannot call the `execute` function and that the transaction reverts.
     function testNonOwnerCannotExecuteCommands() public {
         assertEq(usdc.balanceOf(address(minimalAccount)), 0);
         address dest = address(usdc);
@@ -57,8 +64,8 @@ contract MinimalAccountTest is Test {
         vm.stopPrank();
     }
 
+    /// @dev Verifies that the signature of a packed user operation can be recovered and matches the owner's address.
     function testRecoverSignedOp() public {
-        // cant be view bc we're importing getConfig which could have mocks
         assertEq(usdc.balanceOf(address(minimalAccount)), 0);
         address dest = address(usdc);
         uint256 value = 0;
@@ -75,6 +82,7 @@ contract MinimalAccountTest is Test {
         assertEq(actualSigner, minimalAccount.owner());
     }
 
+    /// @dev Verifies that the `validateUserOp` function returns the expected validation data.
     function testValidationOfUserOps() public {
         assertEq(usdc.balanceOf(address(minimalAccount)), 0);
         address dest = address(usdc);
@@ -94,6 +102,7 @@ contract MinimalAccountTest is Test {
         assertEq(validationData, 0);
     }
 
+    /// @dev Verifies that the EntryPoint v0.7.0 can call `handleOps` to execute a user operation and mint tokens to the MinimalAccount.
     function testEntryPointCanExecuteCommands() public {
         assertEq(usdc.balanceOf(address(minimalAccount)), 0);
 
