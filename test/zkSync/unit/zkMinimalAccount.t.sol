@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import {console2, Test} from "forge-std/Test.sol";
-import {ZkMinimalAccount} from "../../src/zkSync/ZkMinimalAccount.sol";
+import {ZkMinimalAccount} from "../../../src/zkSync/ZkMinimalAccount.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ACCOUNT_VALIDATION_SUCCESS_MAGIC} from
@@ -22,7 +22,6 @@ contract zkMinimalAccountTest is Test {
     uint256 constant AMOUNT = 1e18;
     bytes32 constant EMPTY_BYTES32 = bytes32(0);
     address constant ANVIL_DEFAULT_ACCOUNT = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-
     address public NOT_OWNER = makeAddr("notOwner");
 
     function setUp() public {
@@ -45,7 +44,19 @@ contract zkMinimalAccountTest is Test {
         assertEq(usdc.balanceOf(address(zkMinAcc)), AMOUNT);
     }
 
-    function testNotOwnerCannotExecuteCommands() public {}
+    function test_RevertIf_NotOwnerCannotExecuteCommands() public {
+        address dest = address(zkMinAcc);
+        uint256 value = 0;
+        bytes memory functionData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(zkMinAcc), AMOUNT);
+
+        Transaction memory transaction = _createUnsignedTransaction(address(zkMinAcc), 113, dest, value, functionData);
+
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(ZkMinimalAccount.ZkMinimalAccount__NotFromBootLoaderNorOwner.selector);
+        zkMinAcc.executeTransaction(EMPTY_BYTES32, EMPTY_BYTES32, transaction);
+
+        assertEq(usdc.balanceOf(address(zkMinAcc)), 0);
+    }
 
     function testZkValidateTransaction() public {
         address dest = address(zkMinAcc);
@@ -64,6 +75,27 @@ contract zkMinimalAccountTest is Test {
 
         assertEq(magic, ACCOUNT_VALIDATION_SUCCESS_MAGIC);
     }
+
+    function test_RevertIf_ZkValidateTransactionIsNotFromBootloader() public {
+        address dest = address(zkMinAcc);
+        uint256 value = 0;
+        bytes memory functionData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(zkMinAcc), AMOUNT);
+
+        Transaction memory transaction = _createUnsignedTransaction(address(zkMinAcc), 113, dest, value, functionData);
+
+        vm.expectRevert(ZkMinimalAccount.ZkMinimalAccount__NotFromBootLoader.selector);
+        bytes4 magic = zkMinAcc.validateTransaction(EMPTY_BYTES32, EMPTY_BYTES32, transaction);
+
+        assert(magic != ACCOUNT_VALIDATION_SUCCESS_MAGIC);
+    }
+
+    function test_ValidateTransaction_WhenCallerIsBootloader_WhenSignatureIsValid() public {}
+
+    function test_RevertWhen_ValidateTransaction_WhenCallerIsBootloader_WhenSignatureIsInvalid() public {}
+
+    function test_RevertWhen_ExecuteTransaction_WhenInsufficientBalance() public {}
+
+    function test_ExecuteTransaction_WhenSystemContractCall() public {}
 
     /*//////////////////////////////////////////////////////////////
                                 Helpers
