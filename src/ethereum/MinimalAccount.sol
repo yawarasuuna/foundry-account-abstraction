@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-/**
- * @title MinimalAccount
- * @dev A minimal account abstraction contract that implements the IAccount interface.
- * @notice This contract allows users to execute transactions, validate user operations, and manage funds.
- * It supports validation of signatures and payment of transaction fees through the EntryPoint contract.
- */
-
 // External Library Imports
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -19,6 +12,12 @@ import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPo
 import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstraction/contracts/core/Helpers.sol";
 
+/**
+ * @title MinimalAccount
+ * @dev A minimal account abstraction contract that implements the IAccount interface.
+ * @notice This contract allows users to execute transactions, validate user operations, and manage funds.
+ * It supports validation of signatures and payment of transaction fees through the EntryPoint contract.
+ */
 contract MinimalAccount is IAccount, Ownable {
     /*//////////////////////////////////////////////////////////////
                                  Errors
@@ -58,8 +57,8 @@ contract MinimalAccount is IAccount, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @dev Initializes the contract with the EntryPoint address.
-     * @param entryPoint The address of the EntryPoint contract.
+     * @dev Initializes the contract with the EntryPoint v0.7.0 address.
+     * @param entryPoint The address of the EntryPoint v0.7.0 contract.
      */
     constructor(address entryPoint) Ownable(msg.sender) {
         // i_entryPoint = entryPoint
@@ -80,7 +79,7 @@ contract MinimalAccount is IAccount, Ownable {
      * @param destination The address to send the transaction to.
      * @param value The amount of Ether to send.
      * @param functionData The data to pass along with the call.
-     * @notice Can be called by either the EntryPoint contract or the contract owner.
+     * @notice Can be called by either the EntryPoint v0.7.0 contract or the contract owner.
      * @dev Reverts with `MinimalAccount__CallFailed` if the call fails.
      */
     function execute(address destination, uint256 value, bytes calldata functionData)
@@ -100,7 +99,7 @@ contract MinimalAccount is IAccount, Ownable {
      * @param userOpHash The hash of the user operation.
      * @param missingAccountFunds The amount of funds required to cover the operation.
      * @return validationData The result of the validation (success or failure).
-     * @notice Can only be called by the EntryPoint contract.
+     * @notice Can only be called by the EntryPoint v0.7.0 contract.
      * @dev Calls `_validateSignature` to verify the signature and `_payPrefund` to cover the operation cost.
      */
     // Signature is valid if it is the MinimalAccount contract owner,  otherwise can go wild
@@ -144,9 +143,9 @@ contract MinimalAccount is IAccount, Ownable {
     }
 
     /**
-     * @dev Pays the required prefund to the EntryPoint contract.
+     * @dev Pays the required prefund to the EntryPoint v0.7.0 contract.
      * @param missingAccountFunds The amount of funds required to cover the operation.
-     * @dev Sends the funds to the EntryPoint contract if `missingAccountFunds` is non-zero.
+     * @dev Sends the funds to the EntryPoint v0.7.0 contract if `missingAccountFunds` is non-zero.
      */
     function _payPrefund(uint256 missingAccountFunds) internal {
         if (missingAccountFunds != 0) {
@@ -161,8 +160,8 @@ contract MinimalAccount is IAccount, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @dev Returns the address of the EntryPoint contract.
-     * @return The address of the EntryPoint contract.
+     * @dev Returns the address of the EntryPoint v0.7.0 contract.
+     * @return The address of the EntryPoint v0.7.0 contract.
      */
     function getEntryPoint() internal view returns (address) {
         return address(i_entryPoint);

@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-/**
- * @title ZkMinimalAccount
- * @dev A minimal account abstraction contract for zkSync Era, supporting transaction validation and execution.
- * @notice This contract allows users to execute transactions and validate signatures.
- * @notice For demo purposes only.
- */
-
 // Open Zeppelin Imports
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -32,6 +25,12 @@ import {SystemContractsCaller} from
     "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/SystemContractsCaller.sol";
 import {Utils} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/Utils.sol";
 
+/**
+ * @title ZkMinimalAccount
+ * @dev A minimal account abstraction contract for zkSync Era, supporting transaction validation and execution.
+ * @notice This contract allows users to execute transactions and validate signatures.
+ * @notice For demo purposes only.
+ */
 contract ZkMinimalAccount is IAccount, Ownable {
     using MemoryTransactionHelper for Transaction;
 
