@@ -11,20 +11,26 @@ import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/
 import {HelperConfig} from "../script/HelperConfig.s.sol";
 import {MinimalAccount} from "../src/ethereum/MinimalAccount.sol";
 
-/// @title SendPackedUserOp Script
-/// @author Your Name
-/// @notice This script is used to send a packed user operation (UserOp) to the EntryPoint v0.7.0 contract.
-/// @dev The script generates a signed UserOp, which includes an ERC20 approval transaction, and sends it to the EntryPoint v0.7.0 for processing.
-///      It uses the HelperConfig contract to fetch network-specific configurations and handles both local and testnet environments.
+/** 
+ * @title SendPackedUserOp Script
+ * @author Your Name
+ * @notice This script is used to send a packed user operation (UserOp) to the EntryPoint v0.7.0 contract.
+ * @dev The script generates a signed UserOp, which includes an ERC20 approval transaction, and sends it to the EntryPoint v0.7.0 for processing.
+ *      It uses the HelperConfig contract to fetch network-specific configurations and handles both local and testnet environments.
+ */
 contract SendPackedUserOp is Script {
     using MessageHashUtils for bytes32;
 
-    /// @notice The amount of tokens to approve in the ERC20 transaction.
+    /** 
+     * @notice The amount of tokens to approve in the ERC20 transaction.
+     */
     uint256 constant AMOUNT_TO_APPROVE = 1e18;
 
-    /// @notice Executes the script to send a packed user operation.
-    /// @dev This function generates a signed UserOp, packages it into an array, and sends it to the EntryPoint v0.7.0 contract.
-    ///      It uses the HelperConfig contract to fetch network-specific configurations.
+    /** 
+     * @notice Executes the script to send a packed user operation.
+     * @dev This function generates a signed UserOp, packages it into an array, and sends it to the EntryPoint v0.7.0 contract.
+     *      It uses the HelperConfig contract to fetch network-specific configurations.
+     */
     function run() public {
         HelperConfig helperConfig = new HelperConfig();
         // TODO Refactor as helperConfig.getConfig();
@@ -44,13 +50,15 @@ contract SendPackedUserOp is Script {
         IEntryPoint(helperConfig.getConfig().entryPoint).handleOps(ops, payable(helperConfig.getConfig().account));
     }
 
-    /// @notice Generates a signed user operation (UserOp) for execution.
-    /// @dev This function creates a UserOp, computes its hash, signs it, and returns the signed UserOp.
-    ///      It handles signing differently for local (Anvil) and testnet environments.
-    /// @param callData The calldata for the UserOp, typically an encoded function call.
-    /// @param config The network configuration fetched from HelperConfig.
-    /// @param minimalAccount The address of the minimal account executing the UserOp.
-    /// @return PackedUserOperation memory The signed UserOp ready for submission to the EntryPoint v0.7.0.
+    /** 
+     * @notice Generates a signed user operation (UserOp) for execution.
+     * @dev This function creates a UserOp, computes its hash, signs it, and returns the signed UserOp.
+     *      It handles signing differently for local (Anvil) and testnet environments.
+     * @param callData The calldata for the UserOp, typically an encoded function call.
+     * @param config The network configuration fetched from HelperConfig.
+     * @param minimalAccount The address of the minimal account executing the UserOp.
+     * @return PackedUserOperation memory The signed UserOp ready for submission to the EntryPoint v0.7.0.
+     */
     function generateSignedUserOperation(
         bytes memory callData,
         HelperConfig.NetworkConfig memory config,
@@ -80,12 +88,14 @@ contract SendPackedUserOp is Script {
         return userOp;
     }
 
-    /// @notice Generates an unsigned user operation (UserOp) with default gas limits and fees.
-    /// @dev This function creates a UserOp with predefined gas limits and fees, leaving the signature empty.
-    /// @param callData The calldata for the UserOp, typically an encoded function call.
-    /// @param sender The address of the sender (minimal account).
-    /// @param nonce The nonce for the UserOp, fetched from the EntryPoint v0.7.0.
-    /// @return PackedUserOperation memory The unsigned UserOp with default gas parameters.
+    /** 
+     * @notice Generates an unsigned user operation (UserOp) with default gas limits and fees.
+     * @dev This function creates a UserOp with predefined gas limits and fees, leaving the signature empty.
+     * @param callData The calldata for the UserOp, typically an encoded function call.
+     * @param sender The address of the sender (minimal account).
+     * @param nonce The nonce for the UserOp, fetched from the EntryPoint v0.7.0.
+     * @return PackedUserOperation memory The unsigned UserOp with default gas parameters.
+     */
     function _generateUnsignedUserOperation(bytes memory callData, address sender, uint256 nonce)
         internal
         pure
